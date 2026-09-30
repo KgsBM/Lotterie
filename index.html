@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tisch-Lotterie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* Alles skaliert mit der Bildschirmgröße: 1rem wächst/schrumpft mit dem Monitor */
+  html { font-size: clamp(11px, min(0.95vw, 1.75vh), 30px); }
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    font-family: 'Fredoka', system-ui, sans-serif;
+    color: #2d1b69;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255,255,255,.18) 0 4rem, transparent 4.05rem),
+      radial-gradient(circle at 88% 12%, rgba(255,255,255,.14) 0 6rem, transparent 6.05rem),
+      radial-gradient(circle at 75% 92%, rgba(255,255,255,.12) 0 5rem, transparent 5.05rem),
+      linear-gradient(135deg, #6a5cff 0%, #b44cff 45%, #ff6fb5 100%);
+  }
+
+  /* ---------- Kopfzeile ---------- */
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem 1.2rem;
+    padding: .8rem 1.2rem .7rem;
+  }
+  h1 {
+    margin: 0;
+    font-family: 'Lilita One', 'Fredoka', sans-serif;
+    font-weight: 400;
+    font-size: 2.6rem;
+    color: #fff;
+    letter-spacing: .05em;
+    text-shadow: 0 .22rem 0 #3b1d8f, 0 .5rem 1rem rgba(0,0,0,.25);
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+  h1 .dice { display: inline-block; animation: spinDice 6s ease-in-out infinite; }
+  @keyframes spinDice {
+    0%, 80% { transform: rotate(0); }
+    90% { transform: rotate(200deg) scale(1.2); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+
+  .btn {
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 1rem;
+    border: none;
+    border-radius: 999px;
+    padding: .6rem 1.1rem;
+    cursor: pointer;
+    background: #fff;
+    color: #4b2a9b;
+    box-shadow: 0 .3rem 0 rgba(40, 10, 100, .35);
+    transition: transform .12s ease, box-shadow .12s ease, filter .2s;
+  }
+  .btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-.12rem); box-shadow: 0 .42rem 0 rgba(40,10,100,.35); }
+  .btn:active:not(:disabled) { transform: translateY(.25rem); box-shadow: 0 .05rem 0 rgba(40,10,100,.35); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .btn-go {
+    font-family: 'Lilita One', 'Fredoka', sans-serif;
+    font-weight: 400;
+    font-size: 1.75rem;
+    letter-spacing: .03em;
+    padding: .8rem 1.9rem;
+    color: #fff;
+    text-shadow: 0 .12rem 0 rgba(0,0,0,.25);
+    background: linear-gradient(135deg, #ffd43b 0%, #ff922b 50%, #ff5c7a 100%);
+    box-shadow: 0 .4rem 0 #b3361f, 0 .8rem 1.5rem rgba(0,0,0,.25);
+    animation: wiggle 3s ease-in-out infinite;
+  }
+  .btn-go:hover:not(:disabled) { box-shadow: 0 .52rem 0 #b3361f, 0 .9rem 1.6rem rgba(0,0,0,.28); }
+  .btn-go:active:not(:disabled) { box-shadow: 0 .1rem 0 #b3361f, 0 .3rem .7rem rgba(0,0,0,.2); }
+  .btn-go:disabled { animation: none; }
+  @keyframes wiggle {
+    0%, 70%, 100% { rotate: 0deg; }
+    75% { rotate: -4deg; }
+    80% { rotate: 4deg; }
+    85% { rotate: -3deg; }
+    90% { rotate: 2deg; }
+  }
+
+  .pill {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+    font-weight: 600;
+    padding: .5rem .85rem;
+    border-radius: 999px;
+    border: .12rem solid rgba(255,255,255,.4);
+    white-space: nowrap;
+  }
+
+  /* ---------- Klassenzimmer / Tische ---------- */
+  main { flex: 1; min-height: 0; display: flex; padding: 0 1.2rem .7rem; }
+  .board {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    padding: 1rem;
+    border-radius: 1.6rem;
+    border: .35rem solid #fff;
+    background-color: #fffaf0;
+    background-image: radial-gradient(#f1dfbd .1rem, transparent .1rem);
+    background-size: 1.3rem 1.3rem;
+    box-shadow: 0 .6rem 0 rgba(59, 29, 143, .35), 0 1.3rem 2.4rem rgba(40, 0, 90, .25);
+    display: flex;
+  }
+  .tables {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: var(--gap, .9rem);
+  }
+  .table {
+    container-type: size;
+    width: var(--tw, 10rem);
+    height: var(--th, 8rem);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 1.3rem;
+    padding: 0;
+    border: .2rem solid var(--c-soft);
+    box-shadow: 0 .3rem 0 rgba(0,0,0,.07);
+    transition: border-color .3s, box-shadow .3s;
+  }
+  .table.has-guests { border-color: var(--c); box-shadow: 0 .3rem 0 var(--c-dark); }
+  .table.bump { animation: bump .45s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes bump {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.07) rotate(-1deg); }
+    100% { transform: scale(1); }
+  }
+  .desk { position: relative; height: 50cqh; flex: none; margin: 5cqh 5cqw 0; }
+  .desk svg { width: 100%; height: 100%; display: block; }
+  .num {
+    position: absolute;
+    left: 50%; top: 42%;
+    transform: translate(-50%, -50%);
+    width: min(24cqh, 22cqw); height: min(24cqh, 22cqw);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: #fff;
+    color: var(--c-dark);
+    font-family: 'Lilita One', 'Fredoka', sans-serif;
+    font-size: min(14cqh, 13cqw);
+    box-shadow: 0 .15rem 0 rgba(0,0,0,.18);
+  }
+  .seats {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 3cqh 5cqw 6cqh;
+    padding: 0 3cqw;
+    border-radius: .8rem;
+    background: var(--c-soft);
+  }
+  .seats .chip { font-size: min(12cqh, 9cqw); }
+
+  /* ---------- Namenskärtchen ---------- */
+  .chip {
+    --tilt: 0deg;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+    max-width: 100%;
+    padding: .3em .75em .3em .5em;
+    background: var(--chip-bg, #ffd43b);
+    color: #24123f;
+    font-weight: 600;
+    font-size: 1.05rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    border: .18em solid rgba(255,255,255,.9);
+    border-radius: 999px;
+    box-shadow: 0 .18em 0 rgba(0,0,0,.2);
+    transform: rotate(var(--tilt));
+    user-select: none;
+  }
+  .chip .emo { font-size: 1.15em; line-height: 1; display: inline-block; }
+  .chip .name { overflow: hidden; text-overflow: ellipsis; }
+  .chip .emo.swap { animation: swap .5s cubic-bezier(.3,1.7,.5,1); }
+  @keyframes swap { from { transform: scale(0) rotate(-180deg); } }
+  .chip.pop-in { animation: popIn .45s cubic-bezier(.3,1.7,.5,1) both; }
+  @keyframes popIn {
+    from { transform: rotate(var(--tilt)) scale(0); opacity: 0; }
+    to   { transform: rotate(var(--tilt)) scale(1); opacity: 1; }
+  }
+  .chip.landed { animation: land .5s cubic-bezier(.3,1.7,.5,1); }
+  @keyframes land {
+    0%   { transform: rotate(var(--tilt)) scale(1.3); }
+    55%  { transform: rotate(var(--tilt)) scale(.88); }
+    100% { transform: rotate(var(--tilt)) scale(1); }
+  }
+
+  /* fliegende Kopie im Overlay */
+  .chip.flying {
+    position: fixed;
+    margin: 0;
+    pointer-events: none;
+    box-shadow: 0 .7rem 1.3rem rgba(30, 0, 80, .35);
+    will-change: transform;
+  }
+  #flyLayer { position: fixed; inset: 0; pointer-events: none; z-index: 900; overflow: hidden; }
+  .confetti { position: fixed; top: -1.2rem; border-radius: 3px; }
+
+  /* ---------- Wartebank ---------- */
+  .pool-wrap {
+    flex: none;
+    margin: 0 1.2rem 1rem;
+    padding: .6rem 1rem .7rem;
+    background: #fff;
+    border-radius: 1.4rem;
+    border: .25rem dashed #ff9ed2;
+    box-shadow: 0 .5rem 0 rgba(59, 29, 143, .3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pool-head {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .8rem;
+  }
+  .pool-title {
+    font-family: 'Lilita One', 'Fredoka', sans-serif;
+    font-size: 1.25rem; color: #d6336c;
+  }
+  .add-form { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+  .add-form input {
+    font: 500 1rem 'Fredoka', sans-serif; color: #2d1b69;
+    width: 13rem; max-width: 45vw;
+    padding: .4rem .85rem;
+    border: .15rem solid #d9ccff; border-radius: 999px;
+    background: #faf7ff; outline: none;
+  }
+  .add-form input:focus { border-color: #9775fa; background: #fff; }
+  .add-form input.shake { animation: shake .3s; border-color: #ff4d6d; }
+  @keyframes shake { 25% { transform: translateX(-.4rem); } 75% { transform: translateX(.4rem); } }
+  .btn-small { font-size: .9rem; padding: .4rem .9rem; box-shadow: 0 .22rem 0 #cfc2ff; background: #f1ecff; }
+  .btn-add { background: linear-gradient(135deg, #38d9a9, #20c997); color: #fff; box-shadow: 0 .22rem 0 #0f8a66; }
+
+  /* Löschen-Knopf an Kärtchen auf der Wartebank */
+  .chip .del {
+    position: absolute; top: -.55em; right: -.55em;
+    width: 1.4em; height: 1.4em; padding: 0;
+    border-radius: 50%; border: .12em solid #fff;
+    background: #ff4d6d; color: #fff;
+    font: 700 .85em/1 'Fredoka', sans-serif;
+    cursor: pointer;
+    display: none; place-items: center;
+    box-shadow: 0 .12em 0 rgba(0,0,0,.2);
+  }
+  .pool .chip:hover .del, .pool .chip:focus-within .del { display: grid; }
+  .chip.pop-out { animation: popOut .3s ease-in forwards; }
+  @keyframes popOut { to { transform: rotate(var(--tilt)) scale(0); opacity: 0; } }
+  .pool {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: .75rem .6rem;
+    padding: .55rem .3rem .3rem;
+    min-height: 0;
+    overflow: auto;
+  }
+  .pool-empty { color: #8a7ab8; font-weight: 500; }
+  .pool-empty[hidden] { display: none; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; left: 50%; top: 50%; z-index: 950;
+    transform: translate(-50%, -50%) scale(0);
+    background: #fff; color: #6a3cff;
+    font-family: 'Lilita One', 'Fredoka', sans-serif; font-size: 1.4rem;
+    padding: .7rem 1.5rem; border-radius: 999px;
+    box-shadow: 0 .35rem 0 #ffd43b, 0 1rem 1.8rem rgba(0,0,0,.25);
+    transition: transform .5s cubic-bezier(.3,1.5,.5,1);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translate(-50%, -50%) scale(1); }
+
+  /* ---------- Tisch-Auswahl ---------- */
+  .select-pill { display: inline-flex; align-items: center; gap: .4rem; padding-top: .3rem; padding-bottom: .3rem; cursor: pointer; }
+  .select-pill select {
+    font: 700 1rem 'Fredoka', sans-serif;
+    color: #4b2a9b;
+    background: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: .2rem .6rem;
+    cursor: pointer;
+    outline: none;
+  }
+  .select-pill select:focus-visible { box-shadow: 0 0 0 .18rem #ffd43b; }
+  .select-pill select:disabled { opacity: .6; cursor: not-allowed; }
+  .btn-upload { background: linear-gradient(135deg, #74c0fc, #4dabf7); color: #fff; box-shadow: 0 .22rem 0 #1c7ed6; }
+
+  /* ---------- Import-Dialog ---------- */
+  .modal-back {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+    background: rgba(35, 10, 80, .55);
+    backdrop-filter: blur(3px);
+  }
+  .modal-back[hidden] { display: none; }
+  .modal {
+    width: min(34rem, 100%);
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+    background: #fff;
+    border-radius: 1.6rem;
+    padding: 1.3rem;
+    box-shadow: 0 .6rem 0 #ff9ed2, 0 1.8rem 3.6rem rgba(0,0,0,.35);
+    animation: modalIn .4s cubic-bezier(.3,1.5,.5,1);
+  }
+  @keyframes modalIn { from { transform: scale(.7) rotate(-3deg); opacity: 0; } }
+  .modal h2 { margin: 0 0 .3rem; font-family: 'Lilita One', 'Fredoka', sans-serif; font-weight: 400; font-size: 1.7rem; color: #6a3cff; }
+  .modal p { margin: 0 0 .7rem; color: #6b5a9e; }
+  .import-preview {
+    display: flex; flex-wrap: wrap; gap: .35rem;
+    overflow: auto; min-height: 0;
+    padding: .7rem; border-radius: 1rem; background: #faf7ff; border: .15rem solid #eee6ff;
+  }
+  .import-preview span { background: #fff; border: .12rem solid #d9ccff; border-radius: 999px; padding: .15rem .6rem; font-weight: 600; font-size: .9rem; }
+  .modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; margin-top: 1rem; }
+
+  .drop-hint {
+    position: fixed; inset: 0; z-index: 1100;
+    display: grid; place-items: center;
+    background: rgba(35, 10, 80, .6);
+    color: #fff; text-align: center;
+    font-family: 'Lilita One', 'Fredoka', sans-serif; font-size: 2.6rem;
+    pointer-events: none;
+  }
+  .drop-hint > div { border: .4rem dashed #fff; border-radius: 2rem; padding: 2rem 3rem; }
+  .drop-hint small { font-family: 'Fredoka', sans-serif; font-size: 1.1rem; }
+  .drop-hint[hidden] { display: none; }
+
+  @media (max-width: 700px) {
+    html { font-size: clamp(10px, min(2.2vw, 1.8vh), 16px); }
+    header, main { padding-left: .7rem; padding-right: .7rem; }
+    .pool-wrap { margin: 0 .7rem .7rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dice">🎲</span> Tisch-Lotterie</h1>
+  <div class="controls">
+    <span class="pill" id="nameCount">👥 0 Namen</span>
+    <label class="pill select-pill">🪑 Tische:
+      <select id="tableSelect" aria-label="Anzahl der Tische"></select>
+    </label>
+    <button class="btn" id="btnBack" disabled>↩️ Zurück auf die Wartebank</button>
+    <button class="btn btn-go" id="btnGo">🎲 Tische auslosen!</button>
+  </div>
+</header>
+
+<main>
+  <section class="board" id="board" aria-label="Klassenzimmer">
+    <div class="tables" id="tables"></div>
+  </section>
+</main>
+
+<section class="pool-wrap" id="poolWrap" aria-label="Wartebank">
+  <div class="pool-head">
+    <span class="pool-title">🪑 Wartebank</span>
+    <form class="add-form" id="addForm" autocomplete="off">
+      <input id="addInput" type="text" maxlength="30" placeholder="Neuer Name …" aria-label="Name eingeben">
+      <button class="btn btn-small btn-add" type="submit">➕ Hinzufügen</button>
+      <button class="btn btn-small btn-upload" type="button" id="btnUpload" title="Namensliste aus Excel (.xlsx) oder LibreOffice (.ods) laden – oder die Datei einfach aufs Fenster ziehen">📂 Liste laden</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.ods,.csv,.txt" hidden>
+      <button class="btn btn-small" type="button" id="btnReset" title="Zurück zur ursprünglichen Liste (Klasse 5.4)">🔄 Originalliste</button>
+    </form>
+  </div>
+  <div class="pool" id="pool">
+    <div class="pool-empty" id="poolEmpty" hidden>Alle sitzen an ihren Tischen! 🎉</div>
+  </div>
+</section>
+
+<!-- Import-Dialog -->
+<div class="modal-back" id="importModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <h2 id="importTitle">📂 Namensliste gefunden</h2>
+    <p id="importInfo"></p>
+    <div class="import-preview" id="importPreview"></div>
+    <div class="modal-actions">
+      <button class="btn btn-small" type="button" id="importCancel">Abbrechen</button>
+      <button class="btn btn-small" type="button" id="importAdd">➕ Dazunehmen</button>
+      <button class="btn btn-small btn-add" type="button" id="importReplace">✅ Liste ersetzen</button>
+    </div>
+  </div>
+</div>
+
+<div class="drop-hint" id="dropHint" hidden><div>📂 Datei hier fallen lassen<br><small>.xlsx · .ods · .csv</small></div></div>
+
+<div id="flyLayer"></div>
+<div class="toast" id="toast">🎉</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ===== Feste Namensliste (aus Liste_5.4.xlsx) ===== */
+  const NAMES = [
+    'Enomaa', 'Mathilda', 'Mara', 'Sophia', 'Aliyah', 'Antonia', 'Damaris', 'Milo',
+    'Lennox', 'Bohdan', 'Paul', 'Juna', 'Jaysus', 'Fiona', 'Eileen', 'Mereanna',
+    'Cord', 'Özcan', 'Agata', 'Iven', 'Lena', 'Michel'
+  ];
+
+  let tableCount = 22;
+  const COLORS = ['#FF8787', '#FFC078', '#FFE066', '#8CE99A', '#63E6BE', '#74C0FC', '#B197FC', '#F783AC', '#A9E34B', '#66D9E8', '#FFA8A8', '#E599F7'];
+  const EMOJIS = ['🦊','🐼','🐸','🦄','🐙','🐯','🐨','🐵','🦖','🐧','🐢','🦁','🐳','🦋','🐝','🐞','🦉','🐬','🐹','🐰','🦈','🐲','🦜','🐻','🦒','🦓','🐘','🦔','🦩','🐿️','🦦','🐌','🦀','🐠','🦥','🐮','🐷','🐺','🦝','🐱','🐶','🦭','🦕','🐊','🦚','🐇','🍕','🚀','⚡','🌈','⭐','🍩','🎸','⚽','🏀','🎈','🍉','🌵','🍄','🎨','🧁','🛹'];
+  const SHAPES = ['999px', '0.9em', '1em .35em 1em .35em', '.35em 1em .35em 1em', '999px .7em 999px .7em', '.8em .8em .8em .25em'];
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const $ = id => document.getElementById(id);
+  const board = $('board'), tablesEl = $('tables'), pool = $('pool'), poolWrap = $('poolWrap'), poolEmpty = $('poolEmpty');
+  const flyLayer = $('flyLayer'), toast = $('toast');
+  const btnGo = $('btnGo'), btnBack = $('btnBack'), nameCount = $('nameCount');
+
+  let busy = false;
+
+  const rand = n => Math.floor(Math.random() * n);
+  const shuffle = arr => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  };
+
+  /* ---------- Tische bauen ---------- */
+  const DESK_SVG = `
+    <svg viewBox="0 0 120 64" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <rect x="18" y="40" width="8" height="22" rx="3" fill="#a0724f"/>
+      <rect x="94" y="40" width="8" height="22" rx="3" fill="#a0724f"/>
+      <rect x="6" y="8" width="108" height="38" rx="13" style="fill:var(--c)"/>
+      <rect x="6" y="36" width="108" height="10" rx="5" fill="rgba(0,0,0,.15)"/>
+      <rect x="16" y="13" width="30" height="6" rx="3" fill="rgba(255,255,255,.55)"/>
+      <circle cx="100" cy="16" r="3" fill="rgba(255,255,255,.55)"/>
+    </svg>`;
+
+  let seatsList = [];
+
+  function buildTables() {
+    tablesEl.innerHTML = '';
+    for (let i = 1; i <= tableCount; i++) {
+      const hue = Math.round((i - 1) * 360 / tableCount);
+      const t = document.createElement('div');
+      t.className = 'table';
+      t.setAttribute('aria-label', 'Tisch ' + i);
+      t.style.setProperty('--c', `hsl(${hue} 85% 64%)`);
+      t.style.setProperty('--c-dark', `hsl(${hue} 65% 42%)`);
+      t.style.setProperty('--c-soft', `hsl(${hue} 90% 94%)`);
+      t.innerHTML = `<div class="desk">${DESK_SVG}<span class="num">${i}</span></div><div class="seats"></div>`;
+      tablesEl.appendChild(t);
+    }
+    seatsList = [...tablesEl.querySelectorAll('.seats')];
+  }
+
+  /* ---------- Namenskärtchen ---------- */
+  function createChip(name, idx) {
+    const chip = document.createElement('div');
+    chip.className = 'chip pop-in';
+    chip.title = name;
+    chip.dataset.index = idx;
+    chip.style.setProperty('--chip-bg', COLORS[(idx * 5) % COLORS.length]);
+    chip.style.setProperty('--tilt', (Math.random() * 8 - 4).toFixed(1) + 'deg');
+    chip.style.borderRadius = SHAPES[rand(SHAPES.length)];
+    chip.style.animationDelay = (idx * 45) + 'ms';
+
+    const emo = document.createElement('span');
+    emo.className = 'emo';
+    const nm = document.createElement('span');
+    nm.className = 'name';
+    nm.textContent = name;
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.type = 'button';
+    del.textContent = '×';
+    del.title = name + ' entfernen';
+    del.setAttribute('aria-label', name + ' entfernen');
+    del.addEventListener('click', () => removeChip(chip));
+    chip.append(emo, nm, del);
+
+    chip.addEventListener('animationend', e => {
+      if (e.target !== chip) return;
+      chip.classList.remove('pop-in', 'landed');
+      chip.style.animationDelay = '';
+    });
+    return chip;
+  }
+
+  const allChips = () => [...document.querySelectorAll('.chip:not(.flying)')];
+
+  /* Jeder Name bekommt ein eigenes, zufälliges Icon (keine Doppelten) */
+  function assignIcons(animate) {
+    const pick = shuffle(EMOJIS);
+    allChips().forEach((chip, i) => {
+      const emo = chip.querySelector('.emo');
+      emo.textContent = pick[i % pick.length];
+      if (animate) {
+        emo.classList.remove('swap');
+        void emo.offsetWidth;
+        emo.classList.add('swap');
+      }
+    });
+  }
+
+  /* ---------- UI-Zustand ---------- */
+  function updateTable(seats) {
+    const n = seats.querySelectorAll('.chip:not([data-flying])').length;
+    seats.closest('.table').classList.toggle('has-guests', n > 0);
+  }
+
+  function updateUI() {
+    const all = allChips().length;
+    const inPool = pool.querySelectorAll('.chip').length;
+    nameCount.textContent = `👥 ${all} ${all === 1 ? 'Name' : 'Namen'}`;
+    tableSelect.disabled = busy;
+    btnUpload.disabled = busy;
+    nameCount.style.background = all > tableCount ? 'rgba(255, 77, 109, .65)' : '';
+    nameCount.title = all > tableCount ? `Mehr Namen als Tische – ${all - tableCount} bleiben beim Auslosen auf der Wartebank` : '';
+    btnReset.disabled = busy;
+    poolEmpty.hidden = inPool > 0;
+    btnGo.disabled = busy || all === 0;
+    btnBack.disabled = busy || inPool === all;
+    btnGo.textContent = inPool < all ? '🎲 Nochmal auslosen!' : '🎲 Tische auslosen!';
+    seatsList.forEach(updateTable);
+  }
+
+  /* ---------- Anpassung an den Monitor ---------- */
+  let poolHeightRem = null;
+
+  function fit() {
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+
+    // Wartebank-Höhe festhalten, damit sich das Klassenzimmer während der Animation nicht verschiebt
+    const inPool = pool.querySelectorAll('.chip').length;
+    if (inPool === allChips().length || poolHeightRem === null) {
+      poolWrap.style.height = '';
+      poolHeightRem = poolWrap.offsetHeight / rem;
+    }
+    poolWrap.style.height = (poolHeightRem * rem) + 'px';
+
+    // beste Spaltenzahl für die verfügbare Fläche suchen
+    const cs = getComputedStyle(board);
+    const W = board.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const H = board.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const gap = Math.max(6, Math.min(W, H) * 0.022);
+    const IDEAL = 1.3; // Breite : Höhe eines Tisches
+    let best = null;
+    for (let cols = 2; cols <= tableCount; cols++) {
+      const rows = Math.ceil(tableCount / cols);
+      let w = (W - gap * (cols - 1)) / cols;
+      let h = (H - gap * (rows - 1)) / rows;
+      if (w <= 0 || h <= 0) continue;
+      // Seitenverhältnis begrenzen, damit Tische nicht zu lang oder zu schmal werden
+      w = Math.min(w, h * 1.8);
+      h = Math.min(h, w / 0.9);
+      const score = Math.min(w / IDEAL, h) * Math.min(w, h * IDEAL);
+      if (!best || score > best.score) best = { score, w: Math.floor(w), h: Math.floor(h) };
+    }
+    if (best) {
+      tablesEl.style.setProperty('--tw', best.w + 'px');
+      tablesEl.style.setProperty('--th', best.h + 'px');
+      tablesEl.style.setProperty('--gap', gap + 'px');
+    }
+  }
+
+  let resizeTimer;
+  function scheduleFit() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (busy) scheduleFit(); else fit(); }, 120);
+  }
+  window.addEventListener('resize', scheduleFit);
+
+  /* ---------- Flug-Animation (FLIP + Bogenflug) ---------- */
+  const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  function buildFlightFrames(dx, dy, tilt, scaleEnd) {
+    const dist = Math.hypot(dx, dy);
+    const vmin = Math.min(innerWidth, innerHeight);
+    const lift = Math.min(vmin * 0.28, vmin * 0.07 + dist * 0.35);  // Bogenhöhe
+    const side = (Math.random() - 0.5) * dist * 0.35;                  // Seitendrall
+    const cx = dx / 2 + side, cy = dy / 2 - lift;                      // Bézier-Kontrollpunkt
+    const spin = (Math.random() < 0.5 ? -1 : 1) * 360;
+    const frames = [];
+    const N = 48;
+    for (let k = 0; k <= N; k++) {
+      const p = k / N;
+      const t = easeInOut(p);
+      const x = 2 * (1 - t) * t * cx + t * t * dx;
+      const y = 2 * (1 - t) * t * cy + t * t * dy;
+      const s = (1 + 0.4 * Math.sin(Math.PI * t)) * (1 + (scaleEnd - 1) * t);
+      const r = tilt + spin * t;
+      frames.push({ offset: p, transform: `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${r.toFixed(2)}deg) scale(${s.toFixed(3)})` });
+    }
+    return frames;
+  }
+
+  function fly(moves, { celebrate = false, message = '🎉 Alle Tische sind ausgelost!' } = {}) {
+    if (!moves.length) return;
+    busy = true;
+
+    // FIRST: Startpositionen (Mittelpunkt + ungedrehte Größe)
+    const firsts = moves.map(({ chip }) => {
+      const r = chip.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: chip.offsetWidth, h: chip.offsetHeight, fontSize: getComputedStyle(chip).fontSize };
+    });
+
+    // Kärtchen im DOM ans Ziel setzen (unsichtbar, bis die Kopie gelandet ist)
+    moves.forEach(({ chip, target }) => {
+      chip.classList.remove('pop-in', 'landed');
+      chip.style.animationDelay = '';
+      chip.dataset.flying = '1';
+      chip.style.visibility = 'hidden';
+      target.appendChild(chip);
+    });
+    updateUI();
+
+    // LAST: Zielpositionen
+    const lasts = moves.map(({ chip }) => {
+      const r = chip.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: chip.offsetWidth };
+    });
+
+    const n = moves.length;
+    const duration = REDUCED ? 250 : 1100;
+    const stagger = REDUCED ? 0 : Math.min(170, 3200 / n);
+    let landed = 0;
+
+    // INVERT + PLAY: fliegende Kopie im Overlay
+    moves.forEach(({ chip, target }, i) => {
+      const f = firsts[i], l = lasts[i];
+      const tilt = parseFloat(chip.style.getPropertyValue('--tilt')) || 0;
+      const clone = chip.cloneNode(true);
+      clone.querySelector('.del')?.remove();
+      clone.classList.add('flying');
+      clone.removeAttribute('data-flying');
+      clone.querySelector('.emo').classList.remove('swap');
+      Object.assign(clone.style, {
+        visibility: 'visible',
+        fontSize: f.fontSize,
+        left: (f.x - f.w / 2) + 'px',
+        top: (f.y - f.h / 2) + 'px',
+        width: f.w + 'px',
+        height: f.h + 'px',
+        zIndex: String(n - i)
+      });
+      flyLayer.appendChild(clone);
+
+      const frames = buildFlightFrames(l.x - f.x, l.y - f.y, tilt, l.w / f.w || 1);
+      const anim = clone.animate(frames, { duration, delay: i * stagger, easing: 'linear', fill: 'both' });
+      anim.onfinish = () => {
+        clone.remove();
+        delete chip.dataset.flying;
+        chip.style.visibility = '';
+        chip.classList.add('landed');
+        const table = target.closest('.table');
+        if (table) {
+          table.classList.remove('bump');
+          void table.offsetWidth;
+          table.classList.add('bump');
+          updateTable(target);
+        }
+        if (++landed === n) {
+          busy = false;
+          updateUI();
+          if (celebrate) { confetti(); showToast(message); }
+        }
+      };
+    });
+  }
+
+  /* ---------- Auslosen & Zurück ---------- */
+  function draw() {
+    if (busy) return;
+    assignIcons(false);                                   // neue Icons bei jeder Auslosung
+    const chips = shuffle(allChips());
+    const order = shuffle([...Array(tableCount).keys()]);
+    const seated = chips.slice(0, tableCount);           // jeder Tisch höchstens einmal
+    const rest = chips.slice(tableCount);
+    const moves = seated.map((chip, i) => ({ chip, target: seatsList[order[i]] }))
+      .concat(rest.filter(c => c.parentElement !== pool).map(chip => ({ chip, target: pool })));
+    const message = rest.length
+      ? `🎉 ${tableCount} Tische vergeben – ${rest.length} ${rest.length === 1 ? 'Name bleibt' : 'Namen bleiben'} auf der Wartebank`
+      : '🎉 Alle Tische sind ausgelost!';
+    fly(moves, { celebrate: true, message });
+  }
+
+  function backToPool() {
+    if (busy) return;
+    const chips = allChips()
+      .filter(c => c.parentElement !== pool)
+      .sort((a, b) => a.dataset.index - b.dataset.index);
+    // Reihenfolge auf der Wartebank wie in der Liste
+    fly(chips.map(chip => ({ chip, target: pool })));
+  }
+
+  /* ---------- Konfetti & Toast ---------- */
+  function confetti() {
+    if (REDUCED) return;
+    const vmin = Math.min(innerWidth, innerHeight);
+    for (let i = 0; i < 140; i++) {
+      const p = document.createElement('div');
+      p.className = 'confetti';
+      const w = vmin * (0.006 + Math.random() * 0.008);
+      Object.assign(p.style, {
+        left: Math.random() * 100 + 'vw',
+        width: w + 'px',
+        height: (w * (1 + Math.random())) + 'px',
+        background: COLORS[i % COLORS.length],
+        borderRadius: Math.random() < .3 ? '50%' : '3px'
+      });
+      flyLayer.appendChild(p);
+      const dx = (Math.random() - .5) * vmin * 0.3;
+      const rot = Math.random() * 1080 - 540;
+      p.animate([
+        { transform: 'translate(0, 0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(${dx}px, 110vh) rotate(${rot}deg)`, opacity: .9 }
+      ], {
+        duration: 2200 + Math.random() * 1800,
+        delay: Math.random() * 500,
+        easing: 'cubic-bezier(.25,.6,.45,1)',
+        fill: 'both'
+      }).onfinish = () => p.remove();
+    }
+  }
+
+  let toastTimer;
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  /* ---------- Namen hinzufügen / entfernen / speichern ---------- */
+  const STORE_KEY = 'tischLotterie2.namen';
+  const addForm = $('addForm'), addInput = $('addInput'), btnReset = $('btnReset');
+  let nextIndex = 0;
+
+  function loadNames() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+      if (Array.isArray(saved) && saved.every(n => typeof n === 'string')) return saved;
+    } catch (e) { /* kein Speicher verfügbar – Originalliste nutzen */ }
+    return NAMES.slice();
+  }
+
+  function saveNames() {
+    const list = allChips()
+      .sort((a, b) => a.dataset.index - b.dataset.index)
+      .map(c => c.title);
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (e) { /* ignorieren */ }
+  }
+
+  function buildChips(names) {
+    allChips().forEach(c => c.remove());
+    nextIndex = 0;
+    names.forEach(name => pool.appendChild(createChip(name.trim(), nextIndex++)));
+    assignIcons(false);
+    updateUI();
+    fit();
+  }
+
+  function unusedEmoji() {
+    const used = new Set(allChips().map(c => c.querySelector('.emo').textContent));
+    const free = EMOJIS.filter(e => !used.has(e));
+    return (free.length ? free : EMOJIS)[rand(free.length || EMOJIS.length)];
+  }
+
+  function shakeInput() {
+    addInput.classList.remove('shake');
+    void addInput.offsetWidth;
+    addInput.classList.add('shake');
+    addInput.focus();
+  }
+
+  function addStudent(raw) {
+    if (busy) return;
+    const name = raw.replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (!name) { shakeInput(); return; }
+    if (allChips().some(c => c.title.toLowerCase() === name.toLowerCase())) {
+      showToast(`✋ ${name} ist schon dabei`);
+      shakeInput();
+      return;
+    }
+    const chip = createChip(name, nextIndex++);
+    chip.style.animationDelay = '';
+    chip.querySelector('.emo').textContent = unusedEmoji();
+    pool.appendChild(chip);
+    chip.scrollIntoView({ block: 'nearest' });
+    addInput.value = '';
+    saveNames();
+    updateUI();
+    fit();
+    if (allChips().length > tableCount) showToast(`ℹ️ Mehr Namen als Tische – ${allChips().length - tableCount} bleiben übrig`);
+  }
+
+  function removeChip(chip) {
+    if (busy || chip.parentElement !== pool) return;
+    chip.classList.add('pop-out');
+    chip.addEventListener('animationend', () => {
+      chip.remove();
+      saveNames();
+      updateUI();
+      fit();
+    }, { once: true });
+  }
+
+  addForm.addEventListener('submit', e => { e.preventDefault(); addStudent(addInput.value); });
+  btnReset.addEventListener('click', () => {
+    if (busy) return;
+    if (!confirm('Zur ursprünglichen Liste (Klasse 5.4, 22 Namen) zurückkehren? Die aktuelle Liste wird ersetzt.')) return;
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignorieren */ }
+    buildChips(NAMES);
+  });
+
+  /* ---------- Anzahl der Tische (5–30) ---------- */
+  const TABLE_KEY = 'tischLotterie2.tische';
+  const MIN_TABLES = 5, MAX_TABLES = 30;
+  const tableSelect = $('tableSelect');
+
+  for (let n = MIN_TABLES; n <= MAX_TABLES; n++) {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    tableSelect.appendChild(o);
+  }
+  try {
+    const saved = parseInt(localStorage.getItem(TABLE_KEY), 10);
+    if (saved >= MIN_TABLES && saved <= MAX_TABLES) tableCount = saved;
+  } catch (e) { /* ignorieren */ }
+  tableSelect.value = tableCount;
+
+  tableSelect.addEventListener('change', () => {
+    if (busy) { tableSelect.value = tableCount; return; }
+    tableCount = parseInt(tableSelect.value, 10);
+    try { localStorage.setItem(TABLE_KEY, tableCount); } catch (e) { /* ignorieren */ }
+    // alle Namen zurück auf die Wartebank (in Listenreihenfolge), dann Tische neu aufbauen
+    allChips().sort((a, b) => a.dataset.index - b.dataset.index).forEach(c => {
+      c.classList.remove('landed');
+      pool.appendChild(c);
+    });
+    buildTables();
+    updateUI();
+    fit();
+    const all = allChips().length;
+    showToast(all > tableCount
+      ? `🪑 ${tableCount} Tische – ${all - tableCount} ${all - tableCount === 1 ? 'Name bleibt' : 'Namen bleiben'} übrig`
+      : `🪑 ${tableCount} Tische`);
+  });
+
+  /* ---------- Namensliste aus Excel / ODS / CSV laden (ohne externe Bibliothek) ---------- */
+  const btnUpload = $('btnUpload'), fileInput = $('fileInput');
+  const importModal = $('importModal'), importInfo = $('importInfo'), importPreview = $('importPreview');
+  let pendingNames = [];
+
+  // ZIP-Datei lesen (xlsx und ods sind ZIP-Archive)
+  async function unzip(buffer) {
+    const view = new DataView(buffer);
+    const bytes = new Uint8Array(buffer);
+    let eocd = -1;
+    for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('Keine gültige Excel-/ODS-Datei.');
+    const count = view.getUint16(eocd + 10, true);
+    let p = view.getUint32(eocd + 16, true);
+    const decoder = new TextDecoder('utf-8');
+    const files = {};
+    for (let n = 0; n < count; n++) {
+      if (view.getUint32(p, true) !== 0x02014b50) break;
+      const method = view.getUint16(p + 10, true);
+      const compSize = view.getUint32(p + 20, true);
+      const nameLen = view.getUint16(p + 28, true);
+      const extraLen = view.getUint16(p + 30, true);
+      const commentLen = view.getUint16(p + 32, true);
+      const localOffset = view.getUint32(p + 42, true);
+      const name = decoder.decode(bytes.subarray(p + 46, p + 46 + nameLen));
+      files[name] = { method, compSize, localOffset };
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    return {
+      has: name => name in files,
+      names: () => Object.keys(files),
+      async text(name) {
+        const f = files[name];
+        if (!f) return null;
+        const lp = f.localOffset;
+        const start = lp + 30 + view.getUint16(lp + 26, true) + view.getUint16(lp + 28, true);
+        const data = bytes.subarray(start, start + f.compSize);
+        if (f.method === 0) return decoder.decode(data);
+        if (f.method !== 8) throw new Error('Unbekannte Komprimierung in der Datei.');
+        if (typeof DecompressionStream === 'undefined') throw new Error('Dieser Browser kann die Datei nicht entpacken. Bitte einen aktuellen Browser verwenden.');
+        const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        return decoder.decode(await new Response(stream).arrayBuffer());
+      }
+    };
+  }
+
+  const parseXml = s => new DOMParser().parseFromString(s, 'application/xml');
+  const byTag = (node, tag) => [...node.getElementsByTagNameNS('*', tag)];
+  const colIndex = ref => {
+    const letters = (ref || '').replace(/[^A-Z]/gi, '').toUpperCase();
+    let n = 0;
+    for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64);
+    return n - 1;
+  };
+
+  async function readXlsx(zip) {
+    // Erstes Tabellenblatt ermitteln
+    let sheetPath = 'xl/worksheets/sheet1.xml';
+    try {
+      const wb = parseXml(await zip.text('xl/workbook.xml'));
+      const first = byTag(wb, 'sheet')[0];
+      const rid = first && (first.getAttribute('r:id') || [...first.attributes].find(a => a.localName === 'id')?.value);
+      const rels = parseXml(await zip.text('xl/_rels/workbook.xml.rels'));
+      const rel = byTag(rels, 'Relationship').find(r => r.getAttribute('Id') === rid);
+      if (rel) {
+        const target = rel.getAttribute('Target').replace(/^\/?(xl\/)?/, '');
+        if (zip.has('xl/' + target)) sheetPath = 'xl/' + target;
+      }
+    } catch (e) { /* Standardpfad verwenden */ }
+    if (!zip.has(sheetPath)) sheetPath = zip.names().find(n => /^xl\/worksheets\/[^/]+\.xml$/.test(n));
+    if (!sheetPath) throw new Error('Kein Tabellenblatt gefunden.');
+
+    let shared = [];
+    if (zip.has('xl/sharedStrings.xml')) {
+      const ss = parseXml(await zip.text('xl/sharedStrings.xml'));
+      shared = byTag(ss, 'si').map(si => byTag(si, 't')
+        .filter(t => t.parentNode.localName !== 'rPh')
+        .map(t => t.textContent).join(''));
+    }
+    const sheet = parseXml(await zip.text(sheetPath));
+    return byTag(sheet, 'row').map(row => {
+      const out = [];
+      byTag(row, 'c').forEach((c, i) => {
+        const type = c.getAttribute('t');
+        const idx = c.getAttribute('r') ? colIndex(c.getAttribute('r')) : i;
+        let val = '';
+        if (type === 's') val = shared[parseInt(byTag(c, 'v')[0]?.textContent, 10)] ?? '';
+        else if (type === 'inlineStr') val = byTag(c, 't').map(t => t.textContent).join('');
+        else val = byTag(c, 'v')[0]?.textContent ?? '';
+        out[idx] = val;
+      });
+      return out;
+    });
+  }
+
+  async function readOds(zip) {
+    const doc = parseXml(await zip.text('content.xml'));
+    const table = byTag(doc, 'table')[0];
+    if (!table) throw new Error('Kein Tabellenblatt gefunden.');
+    const rows = [];
+    byTag(table, 'table-row').forEach(row => {
+      const out = [];
+      [...row.children].forEach(cell => {
+        if (cell.localName !== 'table-cell' && cell.localName !== 'covered-table-cell') return;
+        const text = byTag(cell, 'p').map(p => p.textContent).join(' ');
+        const rep = Math.min(parseInt(cell.getAttributeNS(cell.namespaceURI, 'number-columns-repeated') || cell.getAttribute('table:number-columns-repeated') || '1', 10) || 1, text ? 50 : 1);
+        for (let r = 0; r < rep; r++) out.push(text);
+      });
+      rows.push(out);
+    });
+    return rows;
+  }
+
+  function readCsv(text) {
+    return text.split(/\r?\n/).map(line => line.split(/[;,\t]/).map(s => s.replace(/^"|"$/g, '')));
+  }
+
+  // Aus den Tabellenzeilen die Namensspalte herausfinden
+  function extractNames(rows) {
+    rows = rows.map(r => Array.from(r || [], v => (v ?? '').toString().replace(/\s+/g, ' ').trim()));
+    rows = rows.filter(r => r.some(Boolean));
+    if (!rows.length) return [];
+    const isName = v => v && !/^[\d\s.,:\/-]+$/.test(v);
+    const header = rows[0].map(v => v.toLowerCase());
+    let col = header.findIndex(h => /vorname|rufname/.test(h));
+    if (col < 0) col = header.findIndex(h => /^(namen?|schüler.*|schueler.*|kind(er)?|teilnehmer.*)$/.test(h));
+    let startRow = 0;
+    if (col >= 0) startRow = 1;
+    else {
+      // Spalte mit den meisten Text-Einträgen nehmen
+      const width = Math.max(...rows.map(r => r.length));
+      let bestCount = -1;
+      for (let c = 0; c < width; c++) {
+        const cnt = rows.filter(r => isName(r[c])).length;
+        if (cnt > bestCount) { bestCount = cnt; col = c; }
+      }
+    }
+    const seen = new Set(), names = [];
+    rows.slice(startRow).forEach(r => {
+      const v = (r[col] || '').slice(0, 30);
+      if (!isName(v)) return;
+      const key = v.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      names.push(v);
+    });
+    return names;
+  }
+
+  async function handleFile(file) {
+    if (!file || busy) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    try {
+      let rows;
+      if (ext === 'xls') throw new Error('Alte .xls-Dateien gehen leider nicht. Bitte in Excel als .xlsx speichern.');
+      if (ext === 'csv' || ext === 'txt') rows = readCsv(await file.text());
+      else {
+        const zip = await unzip(await file.arrayBuffer());
+        if (zip.has('content.xml')) rows = await readOds(zip);
+        else if (zip.has('xl/workbook.xml') || zip.names().some(n => n.startsWith('xl/worksheets/'))) rows = await readXlsx(zip);
+        else throw new Error('Das ist keine Excel- oder ODS-Tabelle.');
+      }
+      const names = extractNames(rows);
+      if (!names.length) throw new Error('In der Datei wurden keine Namen gefunden.');
+      openImport(names, file.name);
+    } catch (err) {
+      showToast('⚠️ ' + (err.message || 'Datei konnte nicht gelesen werden.'));
+    }
+  }
+
+  function openImport(names, fileName) {
+    pendingNames = names;
+    importInfo.textContent = `${names.length} ${names.length === 1 ? 'Name' : 'Namen'} in „${fileName}“ gefunden. Sollen sie die aktuelle Liste ersetzen oder dazukommen?`;
+    importPreview.innerHTML = '';
+    names.forEach(n => { const s = document.createElement('span'); s.textContent = n; importPreview.appendChild(s); });
+    importModal.hidden = false;
+    $('importReplace').focus();
+  }
+  const closeImport = () => { importModal.hidden = true; pendingNames = []; };
+
+  $('importCancel').addEventListener('click', closeImport);
+  importModal.addEventListener('click', e => { if (e.target === importModal) closeImport(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !importModal.hidden) closeImport(); });
+
+  $('importReplace').addEventListener('click', () => {
+    const names = pendingNames;
+    closeImport();
+    buildChips(names);
+    saveNames();
+    showToast(`📂 ${names.length} Namen geladen`);
+  });
+  $('importAdd').addEventListener('click', () => {
+    const known = new Set(allChips().map(c => c.title.toLowerCase()));
+    const incoming = pendingNames;
+    const fresh = incoming.filter(n => !known.has(n.toLowerCase()));
+    closeImport();
+    // ohne Neuaufbau hinzufügen, falls schon Namen an Tischen sitzen
+    fresh.forEach((n, i) => {
+      const chip = createChip(n, nextIndex++);
+      chip.style.animationDelay = (i * 45) + 'ms';
+      chip.querySelector('.emo').textContent = unusedEmoji();
+      pool.appendChild(chip);
+    });
+    saveNames();
+    updateUI();
+    fit();
+    const skipped = incoming.length - fresh.length;
+    showToast(`➕ ${fresh.length} Namen dazu` + (skipped ? ` (${skipped} schon vorhanden)` : ''));
+  });
+
+  btnUpload.addEventListener('click', () => { if (!busy) fileInput.click(); });
+  fileInput.addEventListener('change', () => { handleFile(fileInput.files[0]); fileInput.value = ''; });
+
+  // Datei einfach aufs Fenster ziehen
+  const dropHint = $('dropHint');
+  let dragDepth = 0;
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; dropHint.hidden = false; });
+  window.addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; dropHint.hidden = true; } });
+  window.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0; dropHint.hidden = true;
+    handleFile(e.dataTransfer.files[0]);
+  });
+
+  /* ---------- Start ---------- */
+  buildTables();
+  buildChips(loadNames());                                // neue Icons bei jedem Laden
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!busy) fit(); });
+
+  btnGo.addEventListener('click', draw);
+  btnBack.addEventListener('click', backToPool);
+})();
+</script>
+</body>
+</html>
